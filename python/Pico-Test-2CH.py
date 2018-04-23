@@ -10,19 +10,22 @@ ps = ps5000a.PS5000a(serialNumber=None, connect=True)
 ################## Starts up the signal generator on the Picoscope #############
 
 #pktopk: set the peak to peak voltage in microvolts
-
+"""
 
 pktopk = 20
 siggen = picobase._PicoscopeBase.setSigGenBuiltInSimple(ps,offsetVoltage=0,
                                 pkToPk=pktopk, waveType="Square",
                                 frequency=5E2, shots=10000, triggerType="Rising",
-                                triggerSource="None", stopFreq=None,
+                                triggerSource="None", stopFreq=None,   
                                 increment=10.0, dwellTime=1E-1, sweepType="Up",
                                 numSweeps=2)
 
-ps.setChannel(channel="A", coupling="AC", VRange=5, VOffset=5) #Trying a VOffset to increase resolution
-ps.setChannel(channel="B", coupling="AC", VRange=5)
+"""
+
+ps.setChannel(channel="A", coupling="AC", VRange=5)
 ps.setChannel(channel="C", enabled=False)
+ps.setChannel(channel="B", coupling="AC", VRange=0.5)
+###ps.setChannel(channel="C", enabled=False)
 ps.setChannel(channel="D", enabled=False)
 
 
@@ -30,10 +33,11 @@ ps.setChannel(channel="D", enabled=False)
 ################# Adjustable Initial Conditions ################################
 
 n_captures = 10000 # Sets the number of capture (records n trigger events)
-sample_interval = 2e-9  
+sample_interval = 2e-9  #minimum sample interval for 2-Channels at 8bit resolution is 2ns
 duration = 500e-9  # 10 ms
 ps.setResolution('8')
-run_time = 360
+run_time = 3600*96 #Unit of time is seconds
+addDir = "Background-0.5Torr-1700V" #Change the folder name (specify experiment conditions)
 
 ################################################################################
 
@@ -99,7 +103,7 @@ while (t1s - t0s)< (run_time-(t3-t2)):
     while i < len(dataPicoB[:,0])-1:
         peak = dataPicoA[i,:].tolist().index(dataPicoA[i,:].min())
         peak_trig = dataPicoB[i,int(peak)]
-        if abs(peak_trig)>0.5:
+        if abs(peak_trig)>0.08:
             savedA = np.append(savedA,dataPicoA[i,:ps.noSamples])
             savedB = np.append(savedB,dataPicoB[i,:ps.noSamples])
         i = i + 1
@@ -108,12 +112,12 @@ while (t1s - t0s)< (run_time-(t3-t2)):
 
 ##################### Save Data to File ########################################
     if savedA[:,53].any() != 0:
-        directory = "C:/Users/Neutrons/Documents/Picoscope5443A/python/Picoscope-Data/"+T1[:10]
+        directory = "C:/Users/Neutrons/Documents/Picoscope5443A/python/Picoscope-Data/"+T1[:10]+"/"+addDir
         if not os.path.exists(directory):
             os.makedirs(directory)
         txt_file = time.strftime("%Y-%m-%d-%H%M%S",t1)
         t4 = time.strftime("%Y-%m-%d-%H%M%S",t4)
-        infoA = os.path.join(directory, "A"+txt_file+str(t4[-7:-1]))
+        infoA = os.path.join(directory, "A"+txt_file+str(t4[11:18]))
         x = np.arange((-0.2*duration),0.8*duration-0.5*sample_interval,(duration)/ps.noSamples)
         dataPicoA_bi = savedA
         #dataPico_txt = np.concatenate(dataPico_bi, [x], axis=0)
@@ -121,7 +125,7 @@ while (t1s - t0s)< (run_time-(t3-t2)):
 
         np.save(infoA, dataPicoA_txt)
 
-        infoB = os.path.join(directory, "B"+txt_file+str(t4[-7:-1]))
+        infoB = os.path.join(directory, "B"+txt_file+"-"+str(t4[11:18]))
         x = np.arange((-0.2*duration),0.8*duration-0.5*sample_interval,(duration)/ps.noSamples)
         dataPicoB_bi = savedB
         #dataPico_txt = np.concatenate(dataPico_bi, [x], axis=0)
